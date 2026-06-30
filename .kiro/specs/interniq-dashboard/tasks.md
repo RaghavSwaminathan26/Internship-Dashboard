@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan implements InternIQ as a full-stack TypeScript application using React (frontend), Firebase Cloud Functions (backend), Firestore (database), and OpenAI API (LLM integration). The implementation follows the pipeline architecture: project setup → ingestion → extraction → scoring → dashboard UI → integration wiring.
+This plan implements InternIQ as a full-stack TypeScript application using React (frontend), Firebase Cloud Functions (backend), Firestore (database), and OpenAI API (LLM integration). The implementation follows the pipeline architecture: ingestion → extraction → scoring → dashboard UI → integration wiring. Project structure (task 1) is already complete.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - _Requirements: 1.2, 2.2, 5.1_
 
 - [ ] 2. Implement Ingestion Service
-  - [-] 2.1 Implement Adzuna API fetcher with pagination and retry logic
+  - [x] 2.1 Implement Adzuna API fetcher with pagination and retry logic
     - Create `packages/functions/src/ingestion/adzunaFetcher.ts`
     - Implement `fetchAdzunaPostings()` with pagination up to 500 postings max
     - Implement exponential backoff retry (1s base, 3 max retries)
@@ -36,7 +36,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Log errors with timestamps on each retry attempt
     - _Requirements: 1.1, 1.4, 1.5_
 
-  - [~] 2.2 Implement SimplifyJobs markdown parser
+  - [x] 2.2 Implement SimplifyJobs markdown parser
     - Create `packages/functions/src/ingestion/simplifyParser.ts`
     - Implement `parseMarkdownTable()` to extract rows from the markdown internship table
     - Implement `parseMarkdownRow()` to parse individual rows into `ParsedRow` objects
@@ -44,19 +44,19 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Handle invalid rows gracefully: skip and log errors, continue parsing
     - _Requirements: 2.1, 2.5, 2.7_
 
-  - [~] 2.3 Write property test: Markdown Table Parse Round-Trip
+  - [-] 2.3 Write property test: Markdown Table Parse Round-Trip
     - **Property 1: Markdown Table Parse Round-Trip**
     - Generate random `ParsedRow` objects with arbitrary non-empty strings for company, role, location, applicationLink, datePosted
     - Assert: serialize → parse → result is equivalent to original
     - **Validates: Requirements 2.7**
 
-  - [~] 2.4 Write property test: Parser Resilience with Invalid Rows
+  - [-] 2.4 Write property test: Parser Resilience with Invalid Rows
     - **Property 2: Parser Resilience with Invalid Rows**
     - Generate markdown tables with a mix of valid and invalid/malformed rows
     - Assert: parsed result count equals valid input row count, order preserved
     - **Validates: Requirements 2.5**
 
-  - [~] 2.5 Implement SimplifyJobs fetcher with retry logic
+  - [x] 2.5 Implement SimplifyJobs fetcher with retry logic
     - Create `packages/functions/src/ingestion/simplifyFetcher.ts`
     - Implement `fetchSimplifyPostings()` to fetch raw markdown from GitHub
     - Implement exponential backoff retry (1s base, 3 max retries)
@@ -293,25 +293,24 @@ This plan implements InternIQ as a full-stack TypeScript application using React
 - Unit tests validate specific examples and edge cases
 - The implementation uses TypeScript throughout for type safety across frontend and backend
 - Firebase environment variables must be configured before deployment (Adzuna API keys, OpenAI API key)
+- Tasks 1.1, 1.2, 1.3, 2.1, and 2.2 are already complete (project structure and initial ingestion code exist)
 
 ## Task Dependency Graph
 
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["1.1"] },
-    { "id": 1, "tasks": ["1.2", "1.3"] },
-    { "id": 2, "tasks": ["2.1", "2.2", "2.5"] },
-    { "id": 3, "tasks": ["2.3", "2.4", "2.6"] },
-    { "id": 4, "tasks": ["2.7"] },
-    { "id": 5, "tasks": ["4.1", "6.1", "8.1"] },
-    { "id": 6, "tasks": ["4.2", "4.3", "6.2", "6.3", "8.2"] },
-    { "id": 7, "tasks": ["4.4", "6.4", "6.5", "8.3", "8.4"] },
-    { "id": 8, "tasks": ["4.5", "6.6", "8.5", "8.6", "9.1"] },
-    { "id": 9, "tasks": ["6.7", "9.2", "9.3", "9.4"] },
-    { "id": 10, "tasks": ["9.5", "10.1"] },
-    { "id": 11, "tasks": ["10.2"] },
-    { "id": 12, "tasks": ["10.3"] }
+    { "id": 0, "tasks": ["2.3", "2.4", "2.5"] },
+    { "id": 1, "tasks": ["2.6"] },
+    { "id": 2, "tasks": ["2.7"] },
+    { "id": 3, "tasks": ["4.1", "6.1", "8.1"] },
+    { "id": 4, "tasks": ["4.2", "4.3", "6.2", "6.3", "8.2"] },
+    { "id": 5, "tasks": ["4.4", "6.4", "6.5", "8.3", "8.4"] },
+    { "id": 6, "tasks": ["4.5", "6.6", "8.5", "8.6", "9.1"] },
+    { "id": 7, "tasks": ["6.7", "9.2", "9.3", "9.4"] },
+    { "id": 8, "tasks": ["9.5", "10.1"] },
+    { "id": 9, "tasks": ["10.2"] },
+    { "id": 10, "tasks": ["10.3"] }
   ]
 }
 ```
