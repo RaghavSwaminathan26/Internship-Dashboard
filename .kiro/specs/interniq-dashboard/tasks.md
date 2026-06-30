@@ -27,7 +27,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Create `firestore.indexes.json` with composite indexes for ranked listing, extraction queue, and filtered queries
     - _Requirements: 1.2, 2.2, 5.1_
 
-- [ ] 2. Implement Ingestion Service
+- [x] 2. Implement Ingestion Service
   - [x] 2.1 Implement Adzuna API fetcher with pagination and retry logic
     - Create `packages/functions/src/ingestion/adzunaFetcher.ts`
     - Implement `fetchAdzunaPostings()` with pagination up to 500 postings max
@@ -44,13 +44,13 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Handle invalid rows gracefully: skip and log errors, continue parsing
     - _Requirements: 2.1, 2.5, 2.7_
 
-  - [-] 2.3 Write property test: Markdown Table Parse Round-Trip
+  - [x] 2.3 Write property test: Markdown Table Parse Round-Trip
     - **Property 1: Markdown Table Parse Round-Trip**
     - Generate random `ParsedRow` objects with arbitrary non-empty strings for company, role, location, applicationLink, datePosted
     - Assert: serialize → parse → result is equivalent to original
     - **Validates: Requirements 2.7**
 
-  - [-] 2.4 Write property test: Parser Resilience with Invalid Rows
+  - [x] 2.4 Write property test: Parser Resilience with Invalid Rows
     - **Property 2: Parser Resilience with Invalid Rows**
     - Generate markdown tables with a mix of valid and invalid/malformed rows
     - Assert: parsed result count equals valid input row count, order preserved
@@ -63,7 +63,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Validate markdown contains recognizable table structure before parsing
     - _Requirements: 2.1, 2.4, 2.6_
 
-  - [~] 2.6 Implement deduplication and Firestore write logic
+  - [x] 2.6 Implement deduplication and Firestore write logic
     - Create `packages/functions/src/ingestion/ingestionService.ts`
     - Implement main ingestion orchestrator that calls both fetchers
     - Check existing document IDs before writing (skip duplicates)
@@ -71,37 +71,37 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Use Adzuna ID for Adzuna postings, derive `${company}-${role}` hash for SimplifyJobs
     - _Requirements: 1.2, 1.3, 2.2, 2.3_
 
-  - [~] 2.7 Write unit tests for ingestion service
+  - [x] 2.7 Write unit tests for ingestion service
     - Test Adzuna pagination stops at 500 postings
     - Test deduplication skips existing posting IDs
     - Test retry exhaustion logs final failure
     - Test invalid markdown rows are skipped with logging
     - _Requirements: 1.1, 1.3, 1.4, 1.5, 2.3, 2.5_
 
-- [~] 3. Checkpoint - Verify ingestion service
+- [x] 3. Checkpoint - Verify ingestion service
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement Extraction Service
-  - [~] 4.1 Implement structured field validation and truncation
+- [x] 4. Implement Extraction Service
+  - [x] 4.1 Implement structured field validation and truncation
     - Create `packages/functions/src/extraction/fieldValidation.ts`
     - Implement `validateAndTruncateFields()` to enforce max lengths, list sizes, and enum values
     - Implement `validateDeadline()` to check ISO 8601 format, return null for invalid
     - Reference `FIELD_CONSTRAINTS` constants for all limits
     - _Requirements: 3.2, 3.3, 3.5_
 
-  - [~] 4.2 Write property test: Structured Field Validation and Truncation
+  - [x] 4.2 Write property test: Structured Field Validation and Truncation
     - **Property 3: Structured Field Validation and Truncation**
     - Generate objects with random-length strings and oversized tech stack lists
     - Assert: all output string fields ≤ max length, techStack ≤ 30 items with each ≤ 50 chars, workMode is valid enum
     - **Validates: Requirements 3.2, 3.3**
 
-  - [~] 4.3 Write property test: Invalid Date Normalization
+  - [x] 4.3 Write property test: Invalid Date Normalization
     - **Property 4: Invalid Date Normalization**
     - Generate a mix of valid ISO 8601 dates (YYYY-MM-DD) and arbitrary strings
     - Assert: invalid dates → null, valid dates → preserved unchanged
     - **Validates: Requirements 3.5**
 
-  - [~] 4.4 Implement extraction service with OpenAI Structured Outputs
+  - [x] 4.4 Implement extraction service with OpenAI Structured Outputs
     - Create `packages/functions/src/extraction/extractionService.ts`
     - Implement Firestore `onCreate` trigger on `postings` collection
     - Send raw posting content to OpenAI API with structured output schema (`strict: true`)
@@ -111,49 +111,49 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Mark as `extraction_failed` and `needs_manual_review` after exhausting retries
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-  - [~] 4.5 Write unit tests for extraction service
+  - [x] 4.5 Write unit tests for extraction service
     - Test successful extraction updates posting document
     - Test truncation of oversized fields
     - Test invalid deadline sets null and marks needs_manual_review
     - Test retry exhaustion marks extraction_failed
     - _Requirements: 3.2, 3.4, 3.5, 3.6_
 
-- [~] 5. Checkpoint - Verify extraction service
+- [x] 5. Checkpoint - Verify extraction service
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Implement Scoring Service
-  - [~] 6.1 Implement resume validation
+  - [x] 6.1 Implement resume validation
     - Create `packages/functions/src/scoring/resumeValidation.ts`
     - Implement `validateResumeInput()` to check max 10,000 chars and min 50 non-whitespace chars
     - Return structured `ValidationResult` with error messages
     - _Requirements: 4.1, 4.10, 8.3_
 
-  - [~] 6.2 Write property test: Resume Input Validation
+  - [x] 6.2 Write property test: Resume Input Validation
     - **Property 7: Resume Input Validation**
     - Generate strings with varying whitespace/non-whitespace ratios and lengths
     - Assert: rejected if >10,000 total chars OR <50 non-whitespace chars, accepted otherwise
     - **Validates: Requirements 4.10, 8.3**
 
-  - [~] 6.3 Implement score clamping and response validation
+  - [x] 6.3 Implement score clamping and response validation
     - Create `packages/functions/src/scoring/scoreValidation.ts`
     - Implement `clampScore()` to constrain values to integer range [1, 10]
     - Implement `validateGapAnalysis()` to check exactly 2 bullets, each ≤ 200 chars
     - Implement `validateScoringResponse()` combining score and gap analysis validation
     - _Requirements: 4.4, 4.5, 4.6, 4.9_
 
-  - [~] 6.4 Write property test: Score Clamping Invariant
+  - [x] 6.4 Write property test: Score Clamping Invariant
     - **Property 5: Score Clamping Invariant**
     - Generate arbitrary numbers (integers, floats, negatives, large values)
     - Assert: result is integer in [1, 10], values already in range are unchanged
     - **Validates: Requirements 4.6**
 
-  - [~] 6.5 Write property test: Scoring Response Validation
+  - [x] 6.5 Write property test: Scoring Response Validation
     - **Property 6: Scoring Response Validation**
     - Generate objects with varying score types and bullet counts/lengths
     - Assert: accepted iff score is integer in [1,10] AND gap analysis has exactly 2 bullets each ≤ 200 chars
     - **Validates: Requirements 4.5, 4.9**
 
-  - [~] 6.6 Implement scoring service with OpenAI integration
+  - [x] 6.6 Implement scoring service with OpenAI integration
     - Create `packages/functions/src/scoring/scoringService.ts`
     - Implement HTTP callable function for resume submission
     - Store resume in `sessions` collection with SHA-256 hash
@@ -164,7 +164,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Score new postings automatically when resume exists
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9_
 
-  - [~] 6.7 Write unit tests for scoring service
+  - [-] 6.7 Write unit tests for scoring service
     - Test resume hash comparison detects changes
     - Test score invalidation on resume change
     - Test retry exhaustion marks scoring_failed
@@ -176,33 +176,33 @@ This plan implements InternIQ as a full-stack TypeScript application using React
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement Dashboard UI - Core layout and posting list
-  - [~] 8.1 Set up React app with routing, React Query, and Firebase SDK
+  - [x] 8.1 Set up React app with routing, React Query, and Firebase SDK
     - Configure Firebase SDK initialization in `packages/frontend/src/firebase.ts`
     - Set up React Query provider in app root
     - Install and configure Recharts for charting
     - Create main `DashboardPage` layout component
     - _Requirements: 5.1, 5.2 (foundation)_
 
-  - [~] 8.2 Implement posting sort and filter utility functions
+  - [x] 8.2 Implement posting sort and filter utility functions
     - Create `packages/frontend/src/utils/sortPostings.ts`
     - Implement `sortPostings()`: scored first by matchScore DESC (ties broken by ingestedAt DESC), then unscored by ingestedAt DESC
     - Create `packages/frontend/src/utils/filterPostings.ts`
     - Implement `filterPostings()` with AND logic: location substring (case-insensitive), tech stack (any match), work mode (any match); exclude postings with no location when location filter active
     - _Requirements: 5.1, 5.4, 6.2, 6.4, 6.6_
 
-  - [~] 8.3 Write property test: Posting Sort Order Invariant
+  - [x] 8.3 Write property test: Posting Sort Order Invariant
     - **Property 8: Posting Sort Order Invariant**
     - Generate posting lists with random scores and timestamps, some scored and some unscored
     - Assert: scored before unscored, scored ordered by matchScore DESC (ties by ingestedAt DESC), unscored by ingestedAt DESC
     - **Validates: Requirements 5.1, 5.4**
 
-  - [~] 8.4 Write property test: Filter AND Logic Correctness
+  - [x] 8.4 Write property test: Filter AND Logic Correctness
     - **Property 9: Filter AND Logic Correctness**
     - Generate random postings and random filter combinations
     - Assert: result contains exactly those postings satisfying ALL active filters; postings without location excluded when location filter active
     - **Validates: Requirements 6.2, 6.4, 6.6**
 
-  - [~] 8.5 Implement PostingList and PostingCard components
+  - [x] 8.5 Implement PostingList and PostingCard components
     - Create `packages/frontend/src/components/PostingList.tsx`
     - Create `packages/frontend/src/components/PostingCard.tsx`
     - Display: role title, company, location, Match_Score, work mode badge, up to 8 tech stack tags, Gap_Analysis bullets
@@ -210,7 +210,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Subscribe to Firestore real-time updates via React Query + onSnapshot
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [~] 8.6 Implement FilterPanel component
+  - [x] 8.6 Implement FilterPanel component
     - Create `packages/frontend/src/components/FilterPanel.tsx`
     - Location text input (max 100 chars)
     - Tech stack multi-select populated from available tags
@@ -220,26 +220,26 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
 - [ ] 9. Implement Dashboard UI - Trends chart and resume input
-  - [~] 9.1 Implement skill frequency computation
+  - [x] 9.1 Implement skill frequency computation
     - Create `packages/frontend/src/utils/skillFrequencies.ts`
     - Implement `computeSkillFrequencies()`: count tech skills across all postings, return top 10 sorted by frequency DESC
     - Handle fewer than 10 skills by returning all available
     - _Requirements: 7.1, 7.4_
 
-  - [~] 9.2 Write property test: Skill Frequency Top-N Computation
+  - [-] 9.2 Write property test: Skill Frequency Top-N Computation
     - **Property 10: Skill Frequency Top-N Computation**
     - Generate posting lists with random tech stack arrays
     - Assert: at most 10 results, sorted by frequency DESC, each frequency equals actual count, no excluded skill has higher frequency than any included skill
     - **Validates: Requirements 7.1, 7.4**
 
-  - [~] 9.3 Implement TrendsChart component
+  - [-] 9.3 Implement TrendsChart component
     - Create `packages/frontend/src/components/TrendsChart.tsx`
     - Render bar chart using Recharts with skill name on x-axis, frequency on y-axis
     - Display "no data" message when no postings have extracted tech stack data
     - Update when new postings are ingested
     - _Requirements: 7.1, 7.2, 7.3, 7.5_
 
-  - [~] 9.4 Implement ResumeInput component
+  - [-] 9.4 Implement ResumeInput component
     - Create `packages/frontend/src/components/ResumeInput.tsx`
     - Text area with 10,000 character max length
     - Client-side validation: reject empty, whitespace-only, or < 50 non-whitespace chars

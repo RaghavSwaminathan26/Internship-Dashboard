@@ -93,7 +93,7 @@ export interface ParsedRow {
 // ─── Validation Result ──────────────────────────────────────────────────────
 export interface ValidationResult {
   valid: boolean;
-  error?: string;
+  errors: string[];
 }
 
 // ─── Gap Analysis ───────────────────────────────────────────────────────────

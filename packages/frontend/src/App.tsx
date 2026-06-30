@@ -1,8 +1,13 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import DashboardPage from './pages/DashboardPage';
+
 function App() {
   return (
-    <div>
-      <h1>InternIQ Dashboard</h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
