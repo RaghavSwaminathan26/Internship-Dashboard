@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Postings collection
+    // Production: restrict write to authenticated admin/service accounts only
+    // Production: restrict read to authenticated users
+    match /postings/{postingId} {
+      allow read, write: if true;
+      // TODO (production): replace with:
+      // allow read: if request.auth != null;
+      // allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Sessions collection
+    // Production: restrict to authenticated users owning their session
+    match /sessions/{sessionId} {
+      allow read, write: if true;
+      // TODO (production): replace with:
+      // allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+  }
+}

@@ -6,7 +6,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
 
 ## Tasks
 
-- [ ] 1. Set up project structure, shared types, and tooling
+- [x] 1. Set up project structure, shared types, and tooling
   - [x] 1.1 Initialize monorepo with frontend and functions packages
     - Create root `package.json` with workspaces for `packages/frontend` and `packages/functions`
     - Initialize `packages/frontend` with Vite + React + TypeScript template
@@ -15,20 +15,20 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Configure `tsconfig.json` for both packages with strict mode enabled
     - _Requirements: All (project foundation)_
 
-  - [-] 1.2 Define shared TypeScript interfaces and constants
+  - [x] 1.2 Define shared TypeScript interfaces and constants
     - Create `packages/shared/types.ts` with `PostingDocument`, `SessionDocument`, `StructuredFields`, `PostingScore`, `ResumeInput`, `FilterState`, `ParsedRow` interfaces
     - Create `packages/shared/constants.ts` with `FIELD_CONSTRAINTS`, retry configuration, and status enums
     - Export all types for use in both frontend and functions packages
     - _Requirements: 3.2, 4.4, 4.5, 5.2, 6.1_
 
-  - [-] 1.3 Configure Firebase project and Firestore rules
+  - [x] 1.3 Configure Firebase project and Firestore rules
     - Create `firebase.json` with functions and firestore configuration
     - Create `firestore.rules` with read/write rules for `postings` and `sessions` collections
     - Create `firestore.indexes.json` with composite indexes for ranked listing, extraction queue, and filtered queries
     - _Requirements: 1.2, 2.2, 5.1_
 
 - [ ] 2. Implement Ingestion Service
-  - [~] 2.1 Implement Adzuna API fetcher with pagination and retry logic
+  - [-] 2.1 Implement Adzuna API fetcher with pagination and retry logic
     - Create `packages/functions/src/ingestion/adzunaFetcher.ts`
     - Implement `fetchAdzunaPostings()` with pagination up to 500 postings max
     - Implement exponential backoff retry (1s base, 3 max retries)

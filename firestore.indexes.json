@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "postings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scoring.matchScore", "order": "DESCENDING" },
+        { "fieldPath": "ingestedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "postings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "ingestedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "postings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "structured.workMode", "order": "ASCENDING" },
+        { "fieldPath": "scoring.matchScore", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
