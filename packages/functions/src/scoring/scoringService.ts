@@ -1,7 +1,7 @@
 /**
  * Scoring Service — HTTP callable function.
  * Accepts resume text, stores it with SHA-256 hash, detects resume changes,
- * scores postings against the resume using Gemini, and writes results to Firestore.
+ * scores postings against the resume using Groq, and writes results to Firestore.
  *
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9
  */
@@ -11,13 +11,13 @@ import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { createHash } from 'crypto';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { RETRY_CONFIG } from '@interniq/shared/constants';
 import { StructuredFields } from '@interniq/shared/types';
 import { validateResumeInput } from './resumeValidation';
 import { validateScoringResponse } from './scoreValidation';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const retryConfig = RETRY_CONFIG.scoring;
 
@@ -46,40 +46,30 @@ function computeResumeHash(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
-// ─── Gemini Scoring Schema ───────────────────────────────────────────────────
-
-const SCORING_SCHEMA = {
-  type: SchemaType.OBJECT,
-  properties: {
-    matchScore: {
-      type: SchemaType.NUMBER,
-      description: 'Integer score from 1 to 10 indicating how well the candidate matches the posting',
-    },
-    gapAnalysis: {
-      type: SchemaType.OBJECT,
-      properties: {
-        matches: {
-          type: SchemaType.STRING,
-          description: 'What in the resume matches this posting (max 200 chars)',
-        },
-        missing: {
-          type: SchemaType.STRING,
-          description: 'What skills or qualifications are missing (max 200 chars)',
-        },
-      },
-      required: ['matches', 'missing'] as string[],
-    },
-  },
-  required: ['matchScore', 'gapAnalysis'] as string[],
-};
-
-// ─── Gemini Call ─────────────────────────────────────────────────────────────
+// ─── Groq Scoring ───────────────────────────────────────────────────────────
 
 /**
- * Calls Gemini to score a posting against a resume.
+ * System prompt that instructs the model to return valid JSON
+ * matching the scoring schema.
+ */
+const SCORING_SYSTEM_PROMPT = `You are a resume-to-job matching assistant. Given a resume and a job posting, evaluate how well the candidate matches the role.
+
+You MUST respond with ONLY valid JSON matching this exact schema (no markdown, no explanation):
+{
+  "matchScore": <integer 1-10 indicating how well the candidate matches the posting>,
+  "gapAnalysis": {
+    "matches": "string (max 200 chars) - what skills/experience in the resume align with the posting",
+    "missing": "string (max 200 chars) - what skills or qualifications are lacking"
+  }
+}
+
+matchScore must be an integer from 1 to 10. Both gapAnalysis fields are required strings (max 200 characters each).`;
+
+/**
+ * Calls Groq to score a posting against a resume.
  * Returns the raw parsed response object.
  */
-async function callGeminiScoring(
+async function callGroqScoring(
   resumeText: string,
   structured: StructuredFields
 ): Promise<unknown> {
@@ -95,26 +85,25 @@ async function callGeminiScoring(
     .filter(Boolean)
     .join('\n');
 
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction:
-      'You are a resume-to-job matching assistant. Given a resume and a job posting, ' +
-      'evaluate how well the candidate matches the role. Provide a matchScore (integer 1-10) ' +
-      'and a gapAnalysis with two fields: "matches" (what skills/experience align, max 200 chars) ' +
-      'and "missing" (what is lacking, max 200 chars).',
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: SCORING_SCHEMA,
-    },
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: SCORING_SYSTEM_PROMPT,
+      },
+      {
+        role: 'user',
+        content: `RESUME:\n${resumeText}\n\nJOB POSTING:\n${postingContext}`,
+      },
+    ],
+    temperature: 0,
+    response_format: { type: 'json_object' },
   });
 
-  const result = await model.generateContent(
-    `RESUME:\n${resumeText}\n\nJOB POSTING:\n${postingContext}`
-  );
-  const content = result.response.text();
-
+  const content = response.choices[0]?.message?.content;
   if (!content) {
-    throw new Error('Gemini returned empty response content');
+    throw new Error('Groq returned empty response content');
   }
 
   const parsed: unknown = JSON.parse(content);
@@ -141,7 +130,7 @@ async function scorePosting(
 
   for (let attempt = 1; attempt <= retryConfig.maxRetries; attempt++) {
     try {
-      const rawResponse = await callGeminiScoring(resumeText, structured);
+      const rawResponse = await callGroqScoring(resumeText, structured);
 
       const validation = validateScoringResponse(rawResponse);
 

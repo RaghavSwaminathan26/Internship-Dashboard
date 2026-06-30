@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./lib",
-    "rootDir": "./src",
+    "rootDir": "..",
     "skipLibCheck": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
@@ -26,6 +26,6 @@
       "@interniq/shared/*": ["../shared/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "lib"]
+  "include": ["src/**/*.ts", "../shared/**/*.ts"],
+  "exclude": ["node_modules", "lib", "src/**/*.test.ts"]
 }

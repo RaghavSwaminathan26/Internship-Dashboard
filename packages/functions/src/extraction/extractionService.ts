@@ -1,6 +1,6 @@
 /**
  * Extraction Service — Firestore onCreate trigger.
- * Sends raw posting content to Gemini with structured output schema,
+ * Sends raw posting content to Groq with JSON schema instructions,
  * validates the response, and writes structured fields back to the posting document.
  *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
@@ -9,44 +9,34 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { RETRY_CONFIG } from '@interniq/shared/constants';
 import { StructuredFields } from '@interniq/shared/types';
 import { validateAndTruncateFields, validateDeadline } from './fieldValidation';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const retryConfig = RETRY_CONFIG.extraction;
 
 /**
- * JSON Schema for Gemini structured outputs (responseMimeType: "application/json").
- * Defines the shape of extracted structured fields.
+ * System prompt that instructs the model to return valid JSON
+ * matching the extraction schema.
  */
-const EXTRACTION_SCHEMA = {
-  type: SchemaType.OBJECT,
-  properties: {
-    roleTitle: { type: SchemaType.STRING, description: 'The job/role title' },
-    company: { type: SchemaType.STRING, description: 'The company name' },
-    location: { type: SchemaType.STRING, description: 'The job location' },
-    techStack: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
-      description: 'List of required technologies and skills',
-    },
-    deadline: {
-      type: SchemaType.STRING,
-      nullable: true,
-      description: 'Application deadline in ISO 8601 date format (YYYY-MM-DD) or null if not specified',
-    },
-    workMode: {
-      type: SchemaType.STRING,
-      enum: ['remote', 'hybrid', 'onsite'] as string[],
-      description: 'Whether the role is remote, hybrid, or onsite',
-    },
-    summary: { type: SchemaType.STRING, description: 'A one-sentence summary of the posting' },
-  },
-  required: ['roleTitle', 'company', 'location', 'techStack', 'deadline', 'workMode', 'summary'] as string[],
-};
+const EXTRACTION_SYSTEM_PROMPT = `You are a data extraction assistant. Extract structured fields from internship posting text.
+If a field is not present in the text, use reasonable defaults: empty string for text fields, empty array for techStack, null for deadline, and "onsite" for workMode.
+
+You MUST respond with ONLY valid JSON matching this exact schema (no markdown, no explanation):
+{
+  "roleTitle": "string - The job/role title",
+  "company": "string - The company name",
+  "location": "string - The job location",
+  "techStack": ["string array - List of required technologies and skills"],
+  "deadline": "string (YYYY-MM-DD) or null - Application deadline in ISO 8601 date format, or null if not specified",
+  "workMode": "remote" | "hybrid" | "onsite",
+  "summary": "string - A one-sentence summary of the posting"
+}
+
+All fields are required. workMode must be one of: "remote", "hybrid", "onsite".`;
 
 /**
  * Sleeps for the given number of milliseconds.
@@ -65,28 +55,30 @@ function getBackoffDelay(attempt: number): number {
 }
 
 /**
- * Calls Gemini with structured output schema.
+ * Calls Groq chat completions with JSON schema instructions.
  * Returns the parsed structured fields object.
  * Throws on API error, timeout, or invalid response.
  */
-async function callGeminiExtraction(rawContent: string): Promise<unknown> {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction:
-      'You are a data extraction assistant. Extract structured fields from internship posting text. ' +
-      'If a field is not present in the text, use reasonable defaults: empty string for text fields, ' +
-      'empty array for techStack, null for deadline, and "onsite" for workMode.',
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: EXTRACTION_SCHEMA,
-    },
+async function callGroqExtraction(rawContent: string): Promise<unknown> {
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      {
+        role: 'system',
+        content: EXTRACTION_SYSTEM_PROMPT,
+      },
+      {
+        role: 'user',
+        content: rawContent,
+      },
+    ],
+    temperature: 0,
+    response_format: { type: 'json_object' },
   });
 
-  const result = await model.generateContent(rawContent);
-  const content = result.response.text();
-
+  const content = response.choices[0]?.message?.content;
   if (!content) {
-    throw new Error('Gemini returned empty response content');
+    throw new Error('Groq returned empty response content');
   }
 
   // Parse JSON — will throw if invalid
@@ -96,7 +88,7 @@ async function callGeminiExtraction(rawContent: string): Promise<unknown> {
 
 /**
  * Firestore onCreate trigger for the `postings` collection.
- * Extracts structured fields from raw posting content using OpenAI.
+ * Extracts structured fields from raw posting content using Groq.
  */
 export const onPostingCreated = onDocumentCreated(
   'postings/{postingId}',
@@ -123,8 +115,8 @@ export const onPostingCreated = onDocumentCreated(
 
     for (let attempt = 1; attempt <= retryConfig.maxRetries; attempt++) {
       try {
-        // Call Gemini for extraction
-        const rawResponse = await callGeminiExtraction(rawContent);
+        // Call Groq for extraction
+        const rawResponse = await callGroqExtraction(rawContent);
 
         // Validate and truncate fields (Requirement 3.3)
         const structuredFields: StructuredFields = validateAndTruncateFields(rawResponse);

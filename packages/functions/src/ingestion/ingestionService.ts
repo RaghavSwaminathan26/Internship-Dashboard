@@ -6,6 +6,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 import { fetchAdzunaPostings, AdzunaConfig, RawAdzunaPosting } from './adzunaFetcher';
 import { fetchSimplifyPostings, SimplifyFetcherConfig, RawSimplifyPosting } from './simplifyFetcher';
 
@@ -29,7 +30,7 @@ interface NormalizedPosting {
   source: 'adzuna' | 'simplifyjobs';
   rawContent: string;
   status: 'raw';
-  ingestedAt: admin.firestore.Timestamp;
+  ingestedAt: Timestamp;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ async function fetchFromAdzuna(config: AdzunaConfig): Promise<FetchResult> {
       source: 'adzuna' as const,
       rawContent: p.rawContent,
       status: 'raw' as const,
-      ingestedAt: admin.firestore.Timestamp.now(),
+      ingestedAt: Timestamp.now(),
     }));
     return { postings: normalized };
   } catch (error: unknown) {
@@ -154,7 +155,7 @@ async function fetchFromSimplify(config: SimplifyFetcherConfig = {}): Promise<Fe
       source: 'simplifyjobs' as const,
       rawContent: p.rawContent,
       status: 'raw' as const,
-      ingestedAt: admin.firestore.Timestamp.now(),
+      ingestedAt: Timestamp.now(),
     }));
     return { postings: normalized };
   } catch (error: unknown) {
