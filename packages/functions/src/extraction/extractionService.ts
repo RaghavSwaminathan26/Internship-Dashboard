@@ -1,6 +1,6 @@
 /**
  * Extraction Service — Firestore onCreate trigger.
- * Sends raw posting content to OpenAI with structured output schema,
+ * Sends raw posting content to Gemini with structured output schema,
  * validates the response, and writes structured fields back to the posting document.
  *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
@@ -9,48 +9,44 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { RETRY_CONFIG } from '@interniq/shared/constants';
 import { StructuredFields } from '@interniq/shared/types';
 import { validateAndTruncateFields, validateDeadline } from './fieldValidation';
 
-const openai = new OpenAI();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const retryConfig = RETRY_CONFIG.extraction;
 
 /**
- * JSON Schema for OpenAI structured outputs (strict: true).
+ * JSON Schema for Gemini structured outputs (responseMimeType: "application/json").
  * Defines the shape of extracted structured fields.
  */
 const EXTRACTION_SCHEMA = {
-  name: 'posting_extraction',
-  strict: true,
-  schema: {
-    type: 'object' as const,
-    properties: {
-      roleTitle: { type: 'string' as const, description: 'The job/role title' },
-      company: { type: 'string' as const, description: 'The company name' },
-      location: { type: 'string' as const, description: 'The job location' },
-      techStack: {
-        type: 'array' as const,
-        items: { type: 'string' as const },
-        description: 'List of required technologies and skills',
-      },
-      deadline: {
-        type: ['string', 'null'] as unknown as 'string',
-        description: 'Application deadline in ISO 8601 date format (YYYY-MM-DD) or null if not specified',
-      },
-      workMode: {
-        type: 'string' as const,
-        enum: ['remote', 'hybrid', 'onsite'],
-        description: 'Whether the role is remote, hybrid, or onsite',
-      },
-      summary: { type: 'string' as const, description: 'A one-sentence summary of the posting' },
+  type: SchemaType.OBJECT,
+  properties: {
+    roleTitle: { type: SchemaType.STRING, description: 'The job/role title' },
+    company: { type: SchemaType.STRING, description: 'The company name' },
+    location: { type: SchemaType.STRING, description: 'The job location' },
+    techStack: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      description: 'List of required technologies and skills',
     },
-    required: ['roleTitle', 'company', 'location', 'techStack', 'deadline', 'workMode', 'summary'],
-    additionalProperties: false,
+    deadline: {
+      type: SchemaType.STRING,
+      nullable: true,
+      description: 'Application deadline in ISO 8601 date format (YYYY-MM-DD) or null if not specified',
+    },
+    workMode: {
+      type: SchemaType.STRING,
+      enum: ['remote', 'hybrid', 'onsite'] as string[],
+      description: 'Whether the role is remote, hybrid, or onsite',
+    },
+    summary: { type: SchemaType.STRING, description: 'A one-sentence summary of the posting' },
   },
-} as const;
+  required: ['roleTitle', 'company', 'location', 'techStack', 'deadline', 'workMode', 'summary'] as string[],
+};
 
 /**
  * Sleeps for the given number of milliseconds.
@@ -69,35 +65,28 @@ function getBackoffDelay(attempt: number): number {
 }
 
 /**
- * Calls OpenAI chat completions with structured output schema.
+ * Calls Gemini with structured output schema.
  * Returns the parsed structured fields object.
  * Throws on API error, timeout, or invalid response.
  */
-async function callOpenAIExtraction(rawContent: string): Promise<unknown> {
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a data extraction assistant. Extract structured fields from internship posting text. ' +
-          'If a field is not present in the text, use reasonable defaults: empty string for text fields, ' +
-          'empty array for techStack, null for deadline, and "onsite" for workMode.',
-      },
-      {
-        role: 'user',
-        content: rawContent,
-      },
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: EXTRACTION_SCHEMA,
+async function callGeminiExtraction(rawContent: string): Promise<unknown> {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    systemInstruction:
+      'You are a data extraction assistant. Extract structured fields from internship posting text. ' +
+      'If a field is not present in the text, use reasonable defaults: empty string for text fields, ' +
+      'empty array for techStack, null for deadline, and "onsite" for workMode.',
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: EXTRACTION_SCHEMA,
     },
   });
 
-  const content = response.choices[0]?.message?.content;
+  const result = await model.generateContent(rawContent);
+  const content = result.response.text();
+
   if (!content) {
-    throw new Error('OpenAI returned empty response content');
+    throw new Error('Gemini returned empty response content');
   }
 
   // Parse JSON — will throw if invalid
@@ -134,8 +123,8 @@ export const onPostingCreated = onDocumentCreated(
 
     for (let attempt = 1; attempt <= retryConfig.maxRetries; attempt++) {
       try {
-        // Call OpenAI for extraction
-        const rawResponse = await callOpenAIExtraction(rawContent);
+        // Call Gemini for extraction
+        const rawResponse = await callGeminiExtraction(rawContent);
 
         // Validate and truncate fields (Requirement 3.3)
         const structuredFields: StructuredFields = validateAndTruncateFields(rawResponse);

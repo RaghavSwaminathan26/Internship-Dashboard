@@ -1,7 +1,7 @@
 /**
  * Scoring Service — HTTP callable function.
  * Accepts resume text, stores it with SHA-256 hash, detects resume changes,
- * scores postings against the resume using OpenAI, and writes results to Firestore.
+ * scores postings against the resume using Gemini, and writes results to Firestore.
  *
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9
  */
@@ -11,13 +11,13 @@ import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { createHash } from 'crypto';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { RETRY_CONFIG } from '@interniq/shared/constants';
 import { StructuredFields } from '@interniq/shared/types';
 import { validateResumeInput } from './resumeValidation';
 import { validateScoringResponse } from './scoreValidation';
 
-const openai = new OpenAI();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const retryConfig = RETRY_CONFIG.scoring;
 
@@ -46,46 +46,40 @@ function computeResumeHash(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
-// ─── OpenAI Scoring Schema ──────────────────────────────────────────────────
+// ─── Gemini Scoring Schema ───────────────────────────────────────────────────
 
 const SCORING_SCHEMA = {
-  name: 'posting_scoring',
-  strict: true,
-  schema: {
-    type: 'object' as const,
-    properties: {
-      matchScore: {
-        type: 'number' as const,
-        description: 'Integer score from 1 to 10 indicating how well the candidate matches the posting',
-      },
-      gapAnalysis: {
-        type: 'object' as const,
-        properties: {
-          matches: {
-            type: 'string' as const,
-            description: 'What in the resume matches this posting (max 200 chars)',
-          },
-          missing: {
-            type: 'string' as const,
-            description: 'What skills or qualifications are missing (max 200 chars)',
-          },
-        },
-        required: ['matches', 'missing'],
-        additionalProperties: false,
-      },
+  type: SchemaType.OBJECT,
+  properties: {
+    matchScore: {
+      type: SchemaType.NUMBER,
+      description: 'Integer score from 1 to 10 indicating how well the candidate matches the posting',
     },
-    required: ['matchScore', 'gapAnalysis'],
-    additionalProperties: false,
+    gapAnalysis: {
+      type: SchemaType.OBJECT,
+      properties: {
+        matches: {
+          type: SchemaType.STRING,
+          description: 'What in the resume matches this posting (max 200 chars)',
+        },
+        missing: {
+          type: SchemaType.STRING,
+          description: 'What skills or qualifications are missing (max 200 chars)',
+        },
+      },
+      required: ['matches', 'missing'] as string[],
+    },
   },
-} as const;
+  required: ['matchScore', 'gapAnalysis'] as string[],
+};
 
-// ─── OpenAI Call ────────────────────────────────────────────────────────────
+// ─── Gemini Call ─────────────────────────────────────────────────────────────
 
 /**
- * Calls OpenAI to score a posting against a resume.
+ * Calls Gemini to score a posting against a resume.
  * Returns the raw parsed response object.
  */
-async function callOpenAIScoring(
+async function callGeminiScoring(
   resumeText: string,
   structured: StructuredFields
 ): Promise<unknown> {
@@ -101,31 +95,26 @@ async function callOpenAIScoring(
     .filter(Boolean)
     .join('\n');
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a resume-to-job matching assistant. Given a resume and a job posting, ' +
-          'evaluate how well the candidate matches the role. Provide a matchScore (integer 1-10) ' +
-          'and a gapAnalysis with two fields: "matches" (what skills/experience align, max 200 chars) ' +
-          'and "missing" (what is lacking, max 200 chars).',
-      },
-      {
-        role: 'user',
-        content: `RESUME:\n${resumeText}\n\nJOB POSTING:\n${postingContext}`,
-      },
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: SCORING_SCHEMA,
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    systemInstruction:
+      'You are a resume-to-job matching assistant. Given a resume and a job posting, ' +
+      'evaluate how well the candidate matches the role. Provide a matchScore (integer 1-10) ' +
+      'and a gapAnalysis with two fields: "matches" (what skills/experience align, max 200 chars) ' +
+      'and "missing" (what is lacking, max 200 chars).',
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: SCORING_SCHEMA,
     },
   });
 
-  const content = response.choices[0]?.message?.content;
+  const result = await model.generateContent(
+    `RESUME:\n${resumeText}\n\nJOB POSTING:\n${postingContext}`
+  );
+  const content = result.response.text();
+
   if (!content) {
-    throw new Error('OpenAI returned empty response content');
+    throw new Error('Gemini returned empty response content');
   }
 
   const parsed: unknown = JSON.parse(content);
@@ -152,7 +141,7 @@ async function scorePosting(
 
   for (let attempt = 1; attempt <= retryConfig.maxRetries; attempt++) {
     try {
-      const rawResponse = await callOpenAIScoring(resumeText, structured);
+      const rawResponse = await callGeminiScoring(resumeText, structured);
 
       const validation = validateScoringResponse(rawResponse);
 
