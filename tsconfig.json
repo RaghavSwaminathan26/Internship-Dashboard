@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "paths": {
+      "@interniq/shared/*": ["./packages/shared/*"]
+    }
+  },
+  "references": [
+    { "path": "./packages/frontend" },
+    { "path": "./packages/functions" },
+    { "path": "./packages/shared" }
+  ]
+}
