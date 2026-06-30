@@ -121,7 +121,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
 - [x] 5. Checkpoint - Verify extraction service
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement Scoring Service
+- [x] 6. Implement Scoring Service
   - [x] 6.1 Implement resume validation
     - Create `packages/functions/src/scoring/resumeValidation.ts`
     - Implement `validateResumeInput()` to check max 10,000 chars and min 50 non-whitespace chars
@@ -164,7 +164,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Score new postings automatically when resume exists
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9_
 
-  - [-] 6.7 Write unit tests for scoring service
+  - [x] 6.7 Write unit tests for scoring service
     - Test resume hash comparison detects changes
     - Test score invalidation on resume change
     - Test retry exhaustion marks scoring_failed
@@ -172,10 +172,10 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Test malformed gap analysis marks scoring_failed
     - _Requirements: 4.3, 4.8, 4.9_
 
-- [~] 7. Checkpoint - Verify scoring service
+- [x] 7. Checkpoint - Verify scoring service
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement Dashboard UI - Core layout and posting list
+- [x] 8. Implement Dashboard UI - Core layout and posting list
   - [x] 8.1 Set up React app with routing, React Query, and Firebase SDK
     - Configure Firebase SDK initialization in `packages/frontend/src/firebase.ts`
     - Set up React Query provider in app root
@@ -219,27 +219,27 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Display "no results" message when filter yields zero matches
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 9. Implement Dashboard UI - Trends chart and resume input
+- [x] 9. Implement Dashboard UI - Trends chart and resume input
   - [x] 9.1 Implement skill frequency computation
     - Create `packages/frontend/src/utils/skillFrequencies.ts`
     - Implement `computeSkillFrequencies()`: count tech skills across all postings, return top 10 sorted by frequency DESC
     - Handle fewer than 10 skills by returning all available
     - _Requirements: 7.1, 7.4_
 
-  - [-] 9.2 Write property test: Skill Frequency Top-N Computation
+  - [x] 9.2 Write property test: Skill Frequency Top-N Computation
     - **Property 10: Skill Frequency Top-N Computation**
     - Generate posting lists with random tech stack arrays
     - Assert: at most 10 results, sorted by frequency DESC, each frequency equals actual count, no excluded skill has higher frequency than any included skill
     - **Validates: Requirements 7.1, 7.4**
 
-  - [-] 9.3 Implement TrendsChart component
+  - [x] 9.3 Implement TrendsChart component
     - Create `packages/frontend/src/components/TrendsChart.tsx`
     - Render bar chart using Recharts with skill name on x-axis, frequency on y-axis
     - Display "no data" message when no postings have extracted tech stack data
     - Update when new postings are ingested
     - _Requirements: 7.1, 7.2, 7.3, 7.5_
 
-  - [-] 9.4 Implement ResumeInput component
+  - [x] 9.4 Implement ResumeInput component
     - Create `packages/frontend/src/components/ResumeInput.tsx`
     - Text area with 10,000 character max length
     - Client-side validation: reject empty, whitespace-only, or < 50 non-whitespace chars
@@ -250,7 +250,7 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Update posting list with scores on completion without page reload
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-  - [~] 9.5 Write unit tests for dashboard components
+  - [x] 9.5 Write unit tests for dashboard components
     - Test sort without resume produces chronological order
     - Test empty filter results show "no results" message
     - Test trends chart empty state shows "no data" message
@@ -258,8 +258,8 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Test loading indicator displays during scoring
     - _Requirements: 5.3, 6.5, 7.5, 8.2, 8.5_
 
-- [ ] 10. Integration wiring and final verification
-  - [~] 10.1 Wire all Cloud Functions with Firebase triggers and HTTP endpoints
+- [x] 10. Integration wiring and final verification
+  - [x] 10.1 Wire all Cloud Functions with Firebase triggers and HTTP endpoints
     - Register ingestion function (HTTP trigger for manual invocation)
     - Register extraction function (Firestore onCreate trigger on `postings`)
     - Register scoring function (HTTP callable)
@@ -267,21 +267,21 @@ This plan implements InternIQ as a full-stack TypeScript application using React
     - Verify function deployment configuration in `firebase.json`
     - _Requirements: 1.1, 3.1, 4.1_
 
-  - [~] 10.2 Connect frontend to Firestore real-time listeners
+  - [x] 10.2 Connect frontend to Firestore real-time listeners
     - Implement Firestore query hooks using React Query for posting list
     - Set up real-time onSnapshot listeners for live updates
     - Handle offline state with cached data fallback
     - Verify composite index queries work (ranked listing, filtered queries)
     - _Requirements: 5.1, 5.4, 7.3, 8.4_
 
-  - [~] 10.3 Write integration tests
+  - [x] 10.3 Write integration tests
     - Test end-to-end ingestion: mock Adzuna API → Firestore write
     - Test end-to-end extraction: mock OpenAI → structured fields stored
     - Test end-to-end scoring: resume submit → score → UI update
     - Test Firestore real-time listener receives new postings
     - _Requirements: 1.1, 3.1, 4.1, 5.1_
 
-- [~] 11. Final checkpoint - Ensure all tests pass
+- [x] 11. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

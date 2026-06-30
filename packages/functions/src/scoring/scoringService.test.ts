@@ -99,7 +99,7 @@ function createMockDoc(id: string, data: any) {
 
 vi.mock('firebase-admin', () => {
   const firestoreInstance = {
-    collection: vi.fn((collectionName: string) => {
+    collection: (collectionName: string) => {
       if (collectionName === 'sessions') {
         return {
           orderBy: mockOrderBy,
@@ -117,23 +117,28 @@ vi.mock('firebase-admin', () => {
         };
       }
       return {};
-    }),
+    },
     batch: () => ({
       update: mockBatchUpdate,
       commit: mockBatchCommit,
     }),
   };
 
+  // admin.firestore() is called as a function AND admin.firestore.FieldValue is accessed
+  const firestoreFn = Object.assign(() => firestoreInstance, {
+    FieldValue: {
+      serverTimestamp: () => ({ _type: 'serverTimestamp' }),
+      delete: () => ({ _type: 'delete' }),
+    },
+  });
+
+  const adminMock = {
+    firestore: firestoreFn,
+  };
+
   return {
-    default: {
-      firestore: () => firestoreInstance,
-    },
-    firestore: {
-      FieldValue: {
-        serverTimestamp: () => ({ _type: 'serverTimestamp' }),
-        delete: () => ({ _type: 'delete' }),
-      },
-    },
+    default: adminMock,
+    ...adminMock,
   };
 });
 

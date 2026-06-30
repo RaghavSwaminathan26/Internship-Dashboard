@@ -63,6 +63,11 @@ export function parseMarkdownRow(row: string): ParsedRow | null {
     return null;
   }
 
+  // Reject separator rows (e.g., | --- | --- | --- |)
+  if (isSeparatorRow(trimmed)) {
+    return null;
+  }
+
   const cells = trimmed
     .slice(1, -1) // Remove first and last pipe
     .split('|')
